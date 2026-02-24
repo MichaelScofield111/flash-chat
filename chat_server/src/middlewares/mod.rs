@@ -11,7 +11,7 @@ use tower_http::{
 };
 use tracing::Level;
 
-use crate::middlewares::request_id::request_id;
+use crate::middlewares::{request_id::request_id, server_time::ServerTimeLayer};
 pub use auth::verify_token;
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -31,6 +31,7 @@ pub fn set_layer(app: Router) -> Router {
                     ),
             )
             .layer(CompressionLayer::new().gzip(true).br(true).deflate(true))
-            .layer(from_fn(request_id)),
+            .layer(from_fn(request_id))
+            .layer(ServerTimeLayer),
     )
 }
