@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{
     AppError,
-    model::{User, Workspace},
+    model::{ChatUser, User, Workspace},
 };
 use argon2::{
     Argon2,
@@ -126,6 +126,23 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
     Ok(is_valid)
 }
 
+#[allow(dead_code)]
+impl ChatUser {
+    pub async fn fetch_by_ids(ids: &[i64], pool: &PgPool) -> Result<Vec<Self>, AppError> {
+        let users = sqlx::query_as(
+            r#"
+                SELECT id, fullname, email
+                FROM users
+                WHERE id = ANY($1)
+                "#,
+        )
+        .bind(ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(users)
+    }
+}
+
 #[cfg(test)]
 impl User {
     pub fn new(id: i64, fullname: &str, email: &str) -> Self {
@@ -164,10 +181,10 @@ impl SigninUser {
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::get_test_pool;
+
     use super::*;
     use anyhow::Result;
-    use sqlx_db_tester::TestPg;
-    use std::path::Path;
 
     #[test]
     fn hash_password_and_verify_should_work() -> Result<()> {
@@ -180,14 +197,9 @@ mod tests {
 
     #[tokio::test]
     async fn create_duplicate_user_should_fail() -> Result<()> {
-        let tdb = TestPg::new(
-            "postgres://postgres:postgres@localhost:5432".to_string(),
-            Path::new("../migrations"),
-        );
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = get_test_pool(None).await;
 
-        let input = CreateUser::new("onne", "Tyr Chen", "tchen@acme.org", "hunter42");
-        User::create(&input, &pool).await?;
+        let input = CreateUser::new("acme", "Tyr Chen", "tchen@acme.org", "hunter42");
         let ret = User::create(&input, &pool).await;
         match ret {
             Err(AppError::EmailAlreadyExists(email)) => {
@@ -200,13 +212,9 @@ mod tests {
 
     #[tokio::test]
     async fn create_and_verify_user_should_work() -> Result<()> {
-        let tdb = TestPg::new(
-            "postgres://postgres:postgres@localhost:5432".to_string(),
-            Path::new("../migrations"),
-        );
-        let pool = tdb.get_pool().await;
+        let (_tdb, pool) = get_test_pool(None).await;
 
-        let input = CreateUser::new("onne", "Tyr Chen", "tchen@acme.org", "hunter42");
+        let input = CreateUser::new("none", "Tian Chen", "tyr@acme.org", "hunter42");
         let user = User::create(&input, &pool).await?;
         assert_eq!(user.email, input.email);
         assert_eq!(user.fullname, input.fullname);

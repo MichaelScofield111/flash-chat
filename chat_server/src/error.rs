@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("email already exists: {0}")]
     EmailAlreadyExists(String),
 
+    #[error("create chat error: {0}")]
+    CreateChatError(String),
+
     // #[from] is auto to convert sqlx::Error to  AppError
     // #[error(...)]` 让你能 `eprintln!("{}", err)` 打印出人类可读的错误信息
     #[error("sqlx error: {0}")]
@@ -47,6 +50,7 @@ impl IntoResponse for AppError {
             Self::PasswordHashError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::JwtError(_) => StatusCode::FORBIDDEN,
             Self::HttpHeaderError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::CreateChatError(_) => StatusCode::BAD_REQUEST,
             Self::EmailAlreadyExists(_) => StatusCode::CONFLICT,
         };
 
