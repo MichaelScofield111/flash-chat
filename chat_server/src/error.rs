@@ -25,6 +25,9 @@ pub enum AppError {
     #[error("sqlx error: {0}")]
     SqlxError(#[from] sqlx::Error),
 
+    #[error("chat not found: {0}")]
+    NotFound(String),
+
     #[error("argon2 error: {0}")]
     PasswordHashError(#[from] password_hash::Error),
 
@@ -52,6 +55,7 @@ impl IntoResponse for AppError {
             Self::HttpHeaderError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::CreateChatError(_) => StatusCode::BAD_REQUEST,
             Self::EmailAlreadyExists(_) => StatusCode::CONFLICT,
+            Self::NotFound(_) => StatusCode::NOT_FOUND,
         };
 
         (status, Json(ErrorOutput::new(self.to_string()))).into_response()
