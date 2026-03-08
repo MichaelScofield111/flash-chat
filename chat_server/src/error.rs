@@ -20,6 +20,9 @@ pub enum AppError {
     #[error("create chat error: {0}")]
     CreateChatError(String),
 
+    #[error("io error: {0}")]
+    IoError(#[from] std::io::Error),
+
     // #[from] is auto to convert sqlx::Error to  AppError
     // #[error(...)]` 让你能 `eprintln!("{}", err)` 打印出人类可读的错误信息
     #[error("sqlx error: {0}")]
@@ -56,6 +59,7 @@ impl IntoResponse for AppError {
             Self::CreateChatError(_) => StatusCode::BAD_REQUEST,
             Self::EmailAlreadyExists(_) => StatusCode::CONFLICT,
             Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         (status, Json(ErrorOutput::new(self.to_string()))).into_response()
