@@ -1,21 +1,25 @@
 use sha1::{Digest, Sha1};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
-use crate::model::ChatFile;
+use crate::{AppError, model::ChatFile};
 
 impl ChatFile {
-    pub fn new(filename: &str, data: &[u8]) -> Self {
+    pub fn new(ws_id: u64, filename: &str, data: &[u8]) -> Self {
         let hash = Sha1::digest(data);
         // 这是对输入数据计算 **SHA-1 哈希值**。SHA-1 是一种加密哈希算法，
         // 会将任意长度的输入数据转换为固定的 20 字节（160 位）输出。
         Self {
+            ws_id,
             ext: filename.split('.').next_back().unwrap_or("txt").to_string(),
             hash: hex::encode(hash),
         }
     }
 
-    pub fn url(&self, ws_id: u64) -> String {
-        format!("/files/{ws_id}/{}", self.hash_to_path())
+    pub fn url(&self) -> String {
+        format!("/files/{}/{}", self.ws_id, self.hash_to_path())
     }
 
     pub fn path(&self, base_dir: &Path) -> PathBuf {
@@ -30,13 +34,55 @@ impl ChatFile {
     }
 }
 
+impl FromStr for ChatFile {
+    type Err = AppError;
+
+    // convert /files/s/339/807/e635afbeab088ce33206fdf4223a6bb156.png to ChatFile
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some(s) = s.strip_prefix("/files/") else {
+            return Err(AppError::ChatFileError(
+                "Invalid chat file path".to_string(),
+            ));
+        };
+
+        let parts: Vec<&str> = s.split('/').collect();
+        if parts.len() != 4 {
+            return Err(AppError::ChatFileError(
+                "File path does not valid".to_string(),
+            ));
+        }
+
+        let Ok(ws_id) = parts[0].parse::<u64>() else {
+            return Err(AppError::ChatFileError(format!(
+                "Invalid workspace id: {}",
+                parts[1]
+            )));
+        };
+
+        let Some((part3, ext)) = parts[3].split_once('.') else {
+            return Err(AppError::ChatFileError(format!(
+                "Invalid file name: {}",
+                parts[3]
+            )));
+        };
+
+        let hash = format!("{}{}{}", parts[1], parts[2], part3);
+        Ok(Self {
+            ws_id,
+            ext: ext.to_string(),
+            hash,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn chat_file_new_should_work() {
-        let file = ChatFile::new("test.txt", b"hello world");
+        let file = ChatFile::new(1, "test.txt", b"hello world");
+        assert_eq!(file.ws_id, 1);
         assert_eq!(file.ext, "txt");
         assert_eq!(file.hash, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed");
     }
