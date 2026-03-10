@@ -107,9 +107,8 @@ mod tests {
     use sqlx_db_tester::TestPg;
 
     impl AppState {
-        pub async fn new_for_test(
-            config: AppConfig,
-        ) -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
+        pub async fn new_for_test() -> Result<(TestPg, Self), AppError> {
+            let config = AppConfig::load()?;
             let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
             let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
             let old_server_url = config.server.db_url.split('/').next().unwrap();
