@@ -38,7 +38,7 @@ pub(crate) async fn upload_handler(
         };
 
         let file = ChatFile::new(ws_id, &filename, &data);
-        let path = file.path(&base_dir);
+        let path = file.path(base_dir);
         if path.exists() {
             info!("File {} already exists: {:?}", filename, path);
         } else {
